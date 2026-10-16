@@ -232,8 +232,29 @@ body { font-family: -apple-system, sans-serif; background: #f5f5f5; color: #111;
 
 <div id="resultArea"></div>
 
+<div class="card">
+  <div class="section-title">手動新增記錄</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">接單時間</div><input id="m_accept" type="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">完成時間（選填）</div><input id="m_complete" type="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">平台金額</div><input id="m_platform" type="number" placeholder="$" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">加碼</div><input id="m_bonus" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+  </div>
+  <input id="m_restaurant" type="text" placeholder="餐廳名稱（選填）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:8px">
+  <div class="seg" style="margin-top:0">
+    <label><input type="radio" name="mtype" value="main" checked><span>主單</span></label>
+    <label><input type="radio" name="mtype" value="stack"><span>疊單</span></label>
+    <label><input type="radio" name="mtype" value="clamp"><span>夾單</span></label>
+  </div>
+  <button class="btn" style="margin-top:8px" onclick="submitManual()">新增</button>
+  <div id="manualResult" style="margin-top:8px;font-size:13px;color:#06C167"></div>
+</div>
+
 <div class="card" id="todayCard">
-  <div class="section-title" id="todayTitle">今日記錄</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div class="section-title" id="todayTitle" style="margin-bottom:0">今日記錄</div>
+    <input id="datePicker" type="date" onchange="loadToday()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+  </div>
   <div id="todayList">載入中…</div>
 </div>
 
@@ -303,8 +324,33 @@ function renderResult(data, label) {
   </div>`;
 }
 
+async function submitManual() {
+  const accept = document.getElementById('m_accept').value;
+  const platform = parseInt(document.getElementById('m_platform').value || '0');
+  if (!accept || !platform) { alert('接單時間和平台金額必填'); return; }
+  const body = {
+    accept_time: accept,
+    complete_time: document.getElementById('m_complete').value || '',
+    platform,
+    bonus: parseInt(document.getElementById('m_bonus').value || '0'),
+    restaurant: document.getElementById('m_restaurant').value,
+    type: document.querySelector('input[name=mtype]:checked').value,
+    date: document.getElementById('datePicker').value || ''
+  };
+  const r = await fetch('/manual', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('manualResult').textContent = d.supplement != null ? `✅ 已新增，補差 $${d.supplement}` : '✅ 已新增（進行中）';
+    loadToday();
+  } else {
+    document.getElementById('manualResult').textContent = '❌ ' + (d.error||'失敗');
+  }
+}
+
 async function loadToday() {
-  const r = await fetch('/today');
+  const date = document.getElementById('datePicker').value || '';
+  const url = date ? '/today?date='+date : '/today';
+  const r = await fetch(url);
   const data = await r.json();
   const list = document.getElementById('todayList');
   if (!data.records.length) { list.innerHTML = '<div style="color:#888;font-size:13px">尚無記錄</div>'; return; }
@@ -330,11 +376,14 @@ async function loadToday() {
 }
 async function deleteRec(id) {
   if (!confirm('刪除這筆記錄？')) return;
-  const r = await fetch('/delete/'+id, {method:'DELETE'});
+  const date = document.getElementById('datePicker').value || '';
+  const r = await fetch('/delete/'+id+(date?'?date='+date:''), {method:'DELETE'});
   const d = await r.json();
   if (d.ok) { document.getElementById('rec-'+id).remove(); loadToday(); }
   else alert(d.error);
 }
+// Set date picker to today
+document.getElementById('datePicker').value = new Date().toISOString().slice(0,10);
 loadToday();
 </script>
 </body>
@@ -436,18 +485,75 @@ def upload():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/manual', methods=['POST'])
+def manual_entry():
+    data = request.get_json()
+    accept_time = data.get('accept_time', '')
+    complete_time = data.get('complete_time', '')
+    platform = int(data.get('platform', 0))
+    bonus = int(data.get('bonus', 0))
+    restaurant = data.get('restaurant', '')
+    order_type = data.get('type', 'main')
+    platform_base = platform - bonus
+    d_str = data.get('date', '')
+    try:
+        target_date = date.fromisoformat(d_str) if d_str else date.today()
+    except ValueError:
+        target_date = date.today()
+    records = get_records(target_date)
+    rec_id = accept_time.replace(':', '')
+    total_min = None
+    supplement = None
+    if complete_time:
+        now = datetime.now()
+        t0 = datetime.strptime(accept_time, '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+        t1 = datetime.strptime(complete_time, '%H:%M').replace(year=now.year, month=now.month, day=now.day)
+        if t1 < t0:
+            from datetime import timedelta
+            t1 += timedelta(days=1)
+        total_min = int((t1 - t0).total_seconds() / 60)
+        supplement = max(0, math.floor(total_min * RATE) - platform_base)
+    rec = {
+        'id': rec_id,
+        'type': order_type,
+        'accept_time': accept_time,
+        'complete_time': complete_time or None,
+        'platform': platform,
+        'bonus': bonus,
+        'platform_base': platform_base,
+        'restaurant': restaurant,
+        'address': '',
+        'est_min': 0,
+        'total_min': total_min,
+        'supplement': supplement,
+        'tip': 0,
+    }
+    records.append(rec)
+    save_records(records, target_date)
+    return jsonify({'ok': True, 'supplement': supplement})
+
 @app.route('/delete/<record_id>', methods=['DELETE'])
 def delete_record(record_id):
-    records = get_records()
+    d_str = request.args.get('date', '')
+    try:
+        d = date.fromisoformat(d_str) if d_str else date.today()
+    except ValueError:
+        d = date.today()
+    records = get_records(d)
     new_records = [r for r in records if r.get('id') != record_id]
     if len(new_records) == len(records):
         return jsonify({'error': '找不到記錄'}), 404
-    save_records(new_records)
+    save_records(new_records, d)
     return jsonify({'ok': True})
 
 @app.route('/today')
 def today():
-    records = get_records()
+    d_str = request.args.get('date', '')
+    try:
+        d = date.fromisoformat(d_str) if d_str else date.today()
+    except ValueError:
+        d = date.today()
+    records = get_records(d)
     tp = sum(r.get('platform', 0) for r in records)
     ts = sum(r.get('supplement') or 0 for r in records)
     return jsonify({'records': records, 'total_platform': tp, 'total_supp': ts})
