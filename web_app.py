@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template_string
 
 load_dotenv(Path(__file__).parent / '.env')
+load_dotenv(Path('/etc/secrets/.env'), override=False)
 GV_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
 DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN', '')
 DISCORD_CHAT_ID = os.environ.get('DISCORD_CHAT_ID', '1495033355790581794')
