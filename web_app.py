@@ -50,26 +50,34 @@ RATE = 245 / 60
 
 app = Flask(__name__)
 
-# Pre-load Tesseract chi_tra at startup so gunicorn --preload COW works
-try:
-    import pytesseract
-    from PIL import Image as _Image
-    import io as _io
-    _dummy = _Image.new('L', (10, 10), 255)
-    pytesseract.image_to_string(_dummy, lang='chi_tra+eng', config='--psm 6')
-except Exception:
-    pass
-
 _skip_words = {'外送','獨享','接受','接單','取消','疊單','加碼','優先','預約','快遞','購物'}
 _skip_pat = re.compile(r'(台灣|桃園|新北|台北|台中|高雄|基隆).*(路|街|巷|號)|分鐘|公里|\$|\d{3,}')
 
 def ocr_image(path):
-    # Primary: Tesseract (offline, unlimited, no API key)
+    # Primary: OCR.space (Traditional Chinese, 25K/month free with own key)
+    ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
+    try:
+        with open(path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode()
+        r = http_req.post('https://api.ocr.space/parse/image',
+                          data={'base64Image': f'data:image/jpeg;base64,{b64}',
+                                'language': 'cht',
+                                'isOverlayRequired': 'false',
+                                'apikey': ocr_key},
+                          timeout=30)
+        result = r.json()
+        if result.get('ParsedResults'):
+            text = result['ParsedResults'][0].get('ParsedText', '')
+            if text.strip():
+                return text
+    except Exception:
+        pass
+    # Fallback: Tesseract eng-only (lightweight, no chi_tra to avoid OOM on 512MB)
     try:
         import pytesseract
         from PIL import Image
         img = Image.open(path)
-        text = pytesseract.image_to_string(img, lang='chi_tra+eng', config='--psm 6')
+        text = pytesseract.image_to_string(img, lang='eng', config='--psm 6')
         if text.strip():
             return text
     except Exception:
@@ -86,19 +94,6 @@ def ocr_image(path):
             annotations = data['responses'][0].get('textAnnotations', [])
             if annotations:
                 return annotations[0]['description']
-    # Fallback: OCR.space
-    with open(path, 'rb') as f:
-        b64 = base64.b64encode(f.read()).decode()
-    ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
-    r = http_req.post('https://api.ocr.space/parse/image',
-                      data={'base64Image': f'data:image/jpeg;base64,{b64}',
-                            'language': 'cht',
-                            'isOverlayRequired': 'false',
-                            'apikey': ocr_key},
-                      timeout=30)
-    result = r.json()
-    if result.get('ParsedResults'):
-        return result['ParsedResults'][0].get('ParsedText', '')
     raise Exception("All OCR methods failed")
 
 def detect_screen_type(text):
