@@ -1,0 +1,5 @@
+.env
+ue_records/
+ue_inbox/
+__pycache__/
+*.pyc
