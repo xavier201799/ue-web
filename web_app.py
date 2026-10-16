@@ -157,269 +157,387 @@ HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>UE 跑單記錄</title>
+<title>UE 補差計算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, sans-serif; background: #f5f5f5; color: #111; }
-.hdr { background: #06C167; color: #fff; padding: 14px 16px; font-size: 18px; font-weight: bold; }
-.card { background: #fff; border-radius: 12px; padding: 16px; margin: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-.section-title { font-size: 15px; font-weight: bold; margin-bottom: 12px; color: #222; }
-.section-sub { font-size: 12px; color: #888; margin-bottom: 8px; }
-.upload-box { border: 2px dashed #ccc; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; color: #888; font-size: 14px; transition: .2s; }
-.upload-box.has-file { border-color: #06C167; color: #06C167; background: #f0faf5; }
-.upload-box input[type=file] { display: none; }
-.preview-img { max-width: 100%; max-height: 160px; border-radius: 8px; margin-top: 8px; display: none; }
-.seg { display: flex; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 10px; }
-.seg label { flex: 1; text-align: center; padding: 10px; font-size: 14px; cursor: pointer; }
-.seg input { display: none; }
-.seg input:checked + span { background: #06C167; color: #fff; display: block; }
-.seg label span { display: block; }
-.divider { border: none; border-top: 2px dashed #e0e0e0; margin: 16px 0; }
-.clamp-section { background: #fff8f0; border: 1px solid #ffd699; border-radius: 10px; padding: 14px; margin-top: 4px; }
-.clamp-title { font-size: 14px; font-weight: bold; color: #e67e22; margin-bottom: 8px; }
-.btn { width: 100%; padding: 14px; background: #06C167; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; }
-.btn:disabled { background: #aaa; }
-.result { border-left: 4px solid #06C167; background: #e8f9ef; border-radius: 8px; padding: 12px; margin: 12px; font-size: 14px; line-height: 1.8; }
-.result.err { border-left-color: #e74c3c; background: #fdecea; }
-.row-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-.row-item:last-child { border-bottom: none; }
-.badge { display: inline-block; border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-left: 4px; }
-.badge.main { background: #e8f9ef; color: #06C167; }
-.badge.clamp { background: #fff3e0; color: #e67e22; }
-.badge.stack { background: #e8eaf6; color: #3f51b5; }
-.badge.stack_clamp { background: #fce4ec; color: #c2185b; }
-.total-bar { background: #06C167; color: #fff; padding: 12px 16px; margin: 0 12px 12px; border-radius: 10px; display: flex; justify-content: space-between; font-size: 14px; }
+:root {
+  --bg:#0A0E1A; --surface:#131929; --elevated:#1B2238; --border:#263050;
+  --text:#E8EEFF; --muted:#6B7BA4; --accent:#4DAAFF; --positive:#2EC27E;
+  --amber:#F5A623; --red:#FF5F6B;
+}
+@media (prefers-color-scheme:light) {
+  :root:not([data-theme="dark"]) {
+    --bg:#F0F4FF; --surface:#FFFFFF; --elevated:#E8EEF8; --border:#C8D4EE;
+    --text:#0A0E1A; --muted:#6276A4; --accent:#2270D8; --positive:#1A8F5C;
+    --amber:#C47A00; --red:#D43E47;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#F0F4FF; --surface:#FFFFFF; --elevated:#E8EEF8; --border:#C8D4EE;
+  --text:#0A0E1A; --muted:#6276A4; --accent:#2270D8; --positive:#1A8F5C;
+  --amber:#C47A00; --red:#D43E47;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5;min-height:100vh;padding:0 16px 32px;max-width:480px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 16px}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17px;letter-spacing:-.02em}
+.logo span{color:var(--accent)}
+.theme-btn{background:var(--elevated);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+.date-tabs{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.date-tabs::-webkit-scrollbar{display:none}
+.date-tab{background:var(--elevated);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:5px 14px;font-size:13px;font-family:'JetBrains Mono',monospace;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.date-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px}
+.card-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+input[type=text],input[type=number],input[type=time],select{width:100%;background:var(--elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:15px;padding:9px 12px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+input:focus,select:focus{border-color:var(--accent)}
+input::placeholder{color:var(--muted);opacity:.6}
+.type-seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.type-seg label{flex:1;text-align:center;padding:9px;font-size:13px;cursor:pointer;color:var(--muted);background:var(--elevated)}
+.type-seg input{display:none}
+.type-seg input:checked+span{background:var(--accent);color:#fff;display:block}
+.type-seg label span{display:block}
+.result-big{text-align:center;padding:10px 0 16px}
+.result-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.result-amt{font-family:'JetBrains Mono',monospace;font-size:52px;font-weight:700;line-height:1;color:var(--positive);letter-spacing:-.03em}
+.result-amt.zero{color:var(--muted)}
+.breakdown{border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px}
+.brow{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.brow .bl{color:var(--muted)}
+.brow .bv{font-family:'JetBrains Mono',monospace;font-weight:600}
+.bv.accent{color:var(--accent)} .bv.amber{color:var(--amber)} .bv.pos{color:var(--positive)}
+.log-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px;font-family:'Inter',sans-serif}
+.log-btn:disabled{opacity:.35;cursor:not-allowed}
+.log-entry{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.le-meta{font-size:12px;color:var(--muted);margin-bottom:2px}
+.le-detail{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text)}
+.le-supp{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--positive);text-align:right}
+.le-del{background:none;border:1px solid var(--border);color:var(--red);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;margin-left:6px;white-space:nowrap}
+.daily-total{background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px}
+.dt-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px}
+.dt-row:last-child{margin-bottom:0}
+.dt-row.grand{padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
+.dt-lbl{color:var(--muted)}
+.dt-lbl.bold{font-weight:700;color:var(--text)}
+.dt-amt{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--positive)}
+.dt-amt.big{font-size:22px}
+.dt-amt.amber{color:var(--amber)}
+.dt-amt.accent{color:var(--accent)}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:20px 0}
+.ocr-toggle{width:100%;background:none;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;margin-bottom:12px;text-align:left}
+.ocr-body{display:none}
+.ocr-body.open{display:block}
+.upload-box{border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;transition:.2s;margin-bottom:8px}
+.upload-box.has{border-color:var(--accent);color:var(--accent)}
+.upload-box input{display:none}
+.preview-img{max-width:100%;max-height:140px;border-radius:8px;margin-top:6px;display:none}
+.ocr-result{background:var(--elevated);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:8px;display:none;line-height:1.8}
+.ocr-result.err{border:1px solid var(--red)}
+.cycle-card{background:var(--surface);border:2px solid var(--amber);border-radius:14px;padding:14px 18px;margin-bottom:12px}
 </style>
 </head>
 <body>
-<div class="hdr">UE 跑單記錄</div>
 
+<header>
+  <div class="logo">UE<span>補差</span></div>
+  <button class="theme-btn" onclick="document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme')==='light'?'dark':'light')">切換主題</button>
+</header>
+
+<div id="dateTabs" class="date-tabs"></div>
+
+<!-- 計算卡 -->
 <div class="card">
-  <!-- 欄位一：主單 / 疊單 -->
-  <div class="section-title">欄位一：主單截圖</div>
-  <div class="section-sub">接到新單時的接單畫面（有「接受」按鈕）</div>
-  <div class="upload-box" id="dz1" onclick="document.getElementById('f1').click()">
-    點擊上傳截圖
-    <input type="file" id="f1" accept="image/*">
+  <div class="card-title">新增記錄</div>
+  <div class="row2">
+    <div><label>接單時間</label><input type="time" id="m_accept" oninput="calc()"></div>
+    <div><label>完成時間</label><input type="time" id="m_complete" oninput="calc()"></div>
   </div>
-  <img id="prev1" class="preview-img">
-  <div class="seg">
-    <label><input type="radio" name="otype" value="main" checked><span>主單</span></label>
-    <label><input type="radio" name="otype" value="stack"><span>疊單</span></label>
+  <div class="row2">
+    <div><label>平台金額</label><input type="number" id="m_platform" placeholder="$" oninput="calc()"></div>
+    <div><label>加碼</label><input type="number" id="m_bonus" placeholder="0" value="0" oninput="calc()"></div>
   </div>
-
-  <hr class="divider">
-
-  <!-- 欄位二：夾單 -->
-  <div class="clamp-section">
-    <div class="clamp-title">欄位二：夾單截圖（選填）</div>
-    <div class="section-sub">在送第一單途中又接了新單，上傳那張接單截圖</div>
-    <div class="upload-box" id="dz2" onclick="document.getElementById('f2').click()">
-      點擊上傳夾單截圖
-      <input type="file" id="f2" accept="image/*">
-    </div>
-    <img id="prev2" class="preview-img">
+  <div class="row2">
+    <div><label>小費 app/刷卡</label><input type="number" id="m_tip_card" placeholder="0" value="0"></div>
+    <div><label>小費 現金</label><input type="number" id="m_tip_cash" placeholder="0" value="0"></div>
   </div>
-
-  <div id="amountOverride" style="display:none; margin-top:12px; background:#fff3cd; border-radius:8px; padding:12px;">
-    <div style="font-size:13px; color:#856404; margin-bottom:6px;">⚠️ OCR 金額讀取失敗，請手動輸入：</div>
-    <input id="manualAmount" type="number" placeholder="主單金額" style="width:48%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px;">
-    <input id="manualAmountClamp" type="number" placeholder="夾單金額" style="width:48%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; margin-left:4%;">
-  </div>
-
-  <button class="btn" id="submitBtn" onclick="submitAll()">送出記錄</button>
-</div>
-
-<div id="resultArea"></div>
-
-<div class="card">
-  <div class="section-title">手動新增記錄</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">接單時間</div><input id="m_accept" type="time" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">完成時間</div><input id="m_complete" type="time" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">平台金額</div><input id="m_platform" type="number" placeholder="$" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">加碼</div><input id="m_bonus" type="number" placeholder="0" value="0" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">小費（app/刷卡）</div><input id="m_tip_card" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">小費（現金）</div><input id="m_tip_cash" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-  </div>
-  <input id="m_restaurant" type="text" placeholder="餐廳名稱（選填）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:8px">
-  <div class="seg" style="margin-top:0">
+  <input type="text" id="m_restaurant" placeholder="餐廳名稱（選填）" style="margin-bottom:10px">
+  <div class="type-seg">
     <label><input type="radio" name="mtype" value="main" checked><span>主單</span></label>
     <label><input type="radio" name="mtype" value="stack"><span>疊單</span></label>
     <label><input type="radio" name="mtype" value="clamp"><span>夾單</span></label>
   </div>
-  <!-- 即時補差預覽 -->
-  <div id="manualPreview" style="display:none;margin-top:10px;background:#e8f9ef;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.8">
-    <div style="display:flex;justify-content:space-between"><span style="color:#888">時間</span><span id="mp_min" style="font-weight:600"></span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:#888">底價</span><span id="mp_base" style="font-weight:600"></span></div>
-    <div style="display:flex;justify-content:space-between;border-top:1px solid #c8eedd;margin-top:4px;padding-top:4px"><span style="color:#06C167;font-weight:700">補差</span><span id="mp_supp" style="font-weight:700;color:#06C167;font-size:15px"></span></div>
+  <div class="result-big">
+    <div class="result-label">補差</div>
+    <div class="result-amt zero" id="resultAmt">—</div>
   </div>
-  <button class="btn" style="margin-top:8px" onclick="submitManual()">新增</button>
-  <div id="manualResult" style="margin-top:8px;font-size:13px;color:#06C167"></div>
+  <div class="breakdown" id="breakdown" style="display:none">
+    <div class="brow"><span class="bl">時間</span><span class="bv accent" id="bMin">—</span></div>
+    <div class="brow"><span class="bl">底價</span><span class="bv" id="bBase">—</span></div>
+    <div class="brow"><span class="bl">分鐘收入</span><span class="bv accent" id="bMinAmt">—</span></div>
+    <div class="brow" id="bBonusRow" style="display:none"><span class="bl">加碼</span><span class="bv amber" id="bBonus">—</span></div>
+    <div class="brow"><span class="bl">補差</span><span class="bv pos" id="bSupp">—</span></div>
+  </div>
+  <button class="log-btn" id="logBtn" disabled onclick="submitManual()">記錄</button>
+  <div id="logMsg" style="margin-top:8px;font-size:13px;color:var(--positive)"></div>
 </div>
 
-<div class="card" id="todayCard">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div class="section-title" id="todayTitle" style="margin-bottom:0">今日記錄</div>
-    <input id="datePicker" type="date" onchange="loadToday()" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+<!-- OCR 截圖（折疊） -->
+<button class="ocr-toggle" onclick="toggleOcr(this)">📷 截圖上傳（OCR 自動辨識）▼</button>
+<div class="ocr-body" id="ocrBody">
+  <div class="card">
+    <div class="card-title">主單截圖</div>
+    <div class="upload-box" id="dz1" onclick="document.getElementById('f1').click()">點擊上傳截圖<input type="file" id="f1" accept="image/*"></div>
+    <img id="prev1" class="preview-img">
+    <div class="type-seg" style="margin-top:8px">
+      <label><input type="radio" name="otype" value="main" checked><span>主單</span></label>
+      <label><input type="radio" name="otype" value="stack"><span>疊單</span></label>
+    </div>
+    <div class="card-title" style="margin-top:12px">夾單截圖（選填）</div>
+    <div class="upload-box" id="dz2" onclick="document.getElementById('f2').click()">點擊上傳夾單截圖<input type="file" id="f2" accept="image/*"></div>
+    <img id="prev2" class="preview-img">
+    <button class="log-btn" id="ocrBtn" onclick="submitOcr()" style="margin-top:10px">OCR 辨識並記錄</button>
+    <div id="ocrResult" class="ocr-result"></div>
   </div>
-  <div id="todayList">載入中…</div>
+</div>
+
+<!-- 今日記錄 -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="card-title" id="logTitle" style="margin-bottom:0">今日記錄</div>
+  </div>
+  <div id="logEntries"><div class="empty">尚無記錄</div></div>
+</div>
+
+<!-- 日合計 -->
+<div id="dailyTotalCard" style="display:none" class="card">
+  <div class="card-title">今日合計</div>
+  <div id="dailyTotalBody"></div>
+</div>
+
+<!-- 週期補差 -->
+<div id="cycleCard" style="display:none" class="cycle-card">
+  <div class="card-title" style="color:var(--amber)">本期累積補差</div>
+  <div id="cycleBody"></div>
 </div>
 
 <script>
-let files = {f1: null, f2: null};
+const RATE = 245/60;
+let viewDate = '';
 
-['f1','f2'].forEach(id => {
-  document.getElementById(id).addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    files[id] = file;
-    const dz = document.getElementById('dz'+id.slice(1));
-    dz.querySelector('input[type=file]') || null;
-    dz.innerHTML = file.name + '<input type="file" id="'+id+'" accept="image/*" style="display:none">';
-    dz.classList.add('has-file');
-    document.getElementById('f'+id.slice(1)).addEventListener('change', e => {
-      const f2 = e.target.files[0]; if (f2) { files[id] = f2; }
-    });
-    const prev = document.getElementById('prev'+id.slice(1));
-    prev.src = URL.createObjectURL(file);
-    prev.style.display = 'block';
-  });
-});
-
-async function uploadOne(file, otype, isClamp) {
-  const fd = new FormData();
-  fd.append('image', file);
-  fd.append('otype', otype);
-  fd.append('clamp', isClamp ? '1' : '0');
-  const r = await fetch('/upload', {method:'POST', body: fd});
-  return r.json();
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-async function submitAll() {
-  if (!files.f1) { alert('請先上傳主單截圖'); return; }
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true; btn.textContent = 'OCR 處理中…';
-  const otype = document.querySelector('input[name=otype]:checked').value;
-  let html = '';
-  try {
-    const d1 = await uploadOne(files.f1, otype, false);
-    html += renderResult(d1, '主單');
-    if (files.f2) {
-      const d2 = await uploadOne(files.f2, 'main', true);
-      html += renderResult(d2, '夾單');
-    }
-    document.getElementById('resultArea').innerHTML = html;
-    loadToday();
-  } catch(e) {
-    document.getElementById('resultArea').innerHTML = `<div class="result err">錯誤: ${e}</div>`;
+function toggleOcr(btn) {
+  const body = document.getElementById('ocrBody');
+  body.classList.toggle('open');
+  btn.textContent = body.classList.contains('open') ? '📷 截圖上傳（OCR 自動辨識）▲' : '📷 截圖上傳（OCR 自動辨識）▼';
+}
+
+// Date tabs
+async function renderDateTabs() {
+  const today = todayStr();
+  const r = await fetch('/dates');
+  let dates = [];
+  try { dates = await r.json(); } catch {}
+  if (!dates.includes(today)) dates.push(today);
+  dates.sort();
+  if (!viewDate) viewDate = today;
+  const el = document.getElementById('dateTabs');
+  const recent = dates.slice(-5);
+  el.innerHTML = recent.map(d => {
+    const p = d.split('-');
+    const lbl = d === today ? '今天' : `${parseInt(p[1])}/${parseInt(p[2])}`;
+    return `<button class="date-tab${d===viewDate?' active':''}" onclick="switchDate('${d}')">${lbl}</button>`;
+  }).join('');
+  if (!recent.includes(viewDate)) {
+    el.innerHTML = `<button class="date-tab active">${viewDate}</button>` + el.innerHTML;
   }
-  btn.disabled = false; btn.textContent = '送出記錄';
 }
 
-function renderResult(data, label) {
-  if (data.error) return `<div class="result err"><b>${label} 錯誤</b>: ${data.error}</div>`;
-  if (data.screen_type === 'accept' && (!data.platform || data.platform === 0)) {
-    document.getElementById('amountOverride').style.display = 'block';
-  }
-  const type = data.screen_type === 'accept' ? '接單' : data.screen_type === 'arrived' ? '抵達' : '完成';
-  return `<div class="result">
-    <b>${label} — ${type}</b><br>
-    餐廳：${data.restaurant || '—'}<br>
-    平台：$${data.platform || '⚠️需手動填'}　底價：$${data.platform_base || '—'}<br>
-    ${data.est_min ? '預估：'+data.est_min+'分' : ''}
-    ${data.total_min != null ? '　實際：'+data.total_min+'分　補差：$'+data.supplement : ''}
-  </div>`;
+function switchDate(d) {
+  viewDate = d;
+  renderDateTabs();
+  loadLog();
 }
 
-function calcManualPreview() {
+// Calculator
+function calc() {
   const accept = document.getElementById('m_accept').value;
   const complete = document.getElementById('m_complete').value;
   const platform = parseFloat(document.getElementById('m_platform').value) || 0;
   const bonus = parseFloat(document.getElementById('m_bonus').value) || 0;
-  const preview = document.getElementById('manualPreview');
-  if (!accept || !complete || !platform) { preview.style.display='none'; return; }
+  const amtEl = document.getElementById('resultAmt');
+  const bd = document.getElementById('breakdown');
+  const btn = document.getElementById('logBtn');
+  if (!accept || !complete || !platform) {
+    amtEl.textContent = '—'; amtEl.className = 'result-amt zero';
+    bd.style.display = 'none'; btn.disabled = true; return;
+  }
   const [ah,am] = accept.split(':').map(Number);
   const [ch,cm] = complete.split(':').map(Number);
-  let totalMin = (ch*60+cm) - (ah*60+am);
-  if (totalMin < 0) totalMin += 1440;
+  let mins = (ch*60+cm)-(ah*60+am);
+  if (mins < 0) mins += 1440;
   const base = platform - bonus;
-  const supp = Math.max(0, Math.floor(totalMin * 245/60) - base);
-  document.getElementById('mp_min').textContent = totalMin + '分 → $' + (totalMin*245/60).toFixed(1);
-  document.getElementById('mp_base').textContent = '$' + base + (bonus>0 ? '（'+platform+'-'+bonus+'）' : '');
-  document.getElementById('mp_supp').textContent = '$' + supp;
-  preview.style.display = '';
+  const minAmt = Math.floor(mins * RATE * 10) / 10;
+  const supp = Math.max(0, Math.floor(mins * RATE) - base);
+  amtEl.textContent = '$' + supp;
+  amtEl.className = 'result-amt' + (supp > 0 ? '' : ' zero');
+  document.getElementById('bMin').textContent = mins + '分';
+  document.getElementById('bBase').textContent = '$' + base + (bonus>0?'（'+platform+'−'+bonus+'）':'');
+  document.getElementById('bMinAmt').textContent = '$' + minAmt;
+  if (bonus > 0) {
+    document.getElementById('bBonusRow').style.display = '';
+    document.getElementById('bBonus').textContent = '+$' + bonus;
+  } else { document.getElementById('bBonusRow').style.display = 'none'; }
+  document.getElementById('bSupp').textContent = '$' + supp;
+  bd.style.display = ''; btn.disabled = false;
 }
 
 async function submitManual() {
   const accept = document.getElementById('m_accept').value;
+  const complete = document.getElementById('m_complete').value;
   const platform = parseInt(document.getElementById('m_platform').value || '0');
-  if (!accept || !platform) { alert('接單時間和平台金額必填'); return; }
+  if (!accept || !platform) { document.getElementById('logMsg').textContent = '⚠️ 接單時間和平台金額必填'; return; }
   const body = {
-    accept_time: accept,
-    complete_time: document.getElementById('m_complete').value || '',
-    platform,
-    bonus: parseInt(document.getElementById('m_bonus').value || '0'),
-    tip_card: parseInt(document.getElementById('m_tip_card').value || '0'),
-    tip_cash: parseInt(document.getElementById('m_tip_cash').value || '0'),
+    accept_time: accept, complete_time: complete,
+    platform, bonus: parseInt(document.getElementById('m_bonus').value||'0'),
+    tip_card: parseInt(document.getElementById('m_tip_card').value||'0'),
+    tip_cash: parseInt(document.getElementById('m_tip_cash').value||'0'),
     restaurant: document.getElementById('m_restaurant').value,
     type: document.querySelector('input[name=mtype]:checked').value,
-    date: document.getElementById('datePicker').value || ''
+    date: viewDate
   };
   const r = await fetch('/manual', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
   const d = await r.json();
   if (d.ok) {
-    document.getElementById('manualResult').textContent = d.supplement != null ? `✅ 已新增，補差 $${d.supplement}` : '✅ 已新增（進行中）';
-    loadToday();
+    document.getElementById('logMsg').textContent = '✅ 已記錄' + (d.supplement!=null?' 補差 $'+d.supplement:'');
+    // clear inputs
+    ['m_accept','m_complete','m_platform','m_restaurant'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('m_bonus').value='0';
+    document.getElementById('m_tip_card').value='0';
+    document.getElementById('m_tip_cash').value='0';
+    document.querySelector('input[name=mtype][value=main]').checked=true;
+    document.getElementById('resultAmt').textContent='—';
+    document.getElementById('resultAmt').className='result-amt zero';
+    document.getElementById('breakdown').style.display='none';
+    document.getElementById('logBtn').disabled=true;
+    setTimeout(()=>{document.getElementById('logMsg').textContent=''},3000);
+    loadLog();
   } else {
-    document.getElementById('manualResult').textContent = '❌ ' + (d.error||'失敗');
+    document.getElementById('logMsg').textContent = '❌ ' + (d.error||'失敗');
   }
 }
 
-async function loadToday() {
-  const date = document.getElementById('datePicker').value || '';
-  const url = date ? '/today?date='+date : '/today';
-  const r = await fetch(url);
-  const data = await r.json();
-  const list = document.getElementById('todayList');
-  if (!data.records.length) { list.innerHTML = '<div style="color:#888;font-size:13px">尚無記錄</div>'; return; }
-  let html = '';
-  for (const rec of data.records) {
-    const typeLabel = {main:'主單',clamp:'夾單',stack:'疊單',stack_clamp:'疊夾'}[rec.type]||rec.type;
-    const supp = rec.supplement != null ? `補差 $${rec.supplement}` : '進行中';
-    html += `<div class="row-item" id="rec-${rec.id}" style="display:flex;align-items:center;gap:8px">
-      <div style="flex:1">
-        ${rec.accept_time}→${rec.complete_time||'?'}
-        <span class="badge ${rec.type}">${typeLabel}</span>
-        　$${rec.platform} ${supp}<br>
-        <span style="color:#888;font-size:12px">${rec.restaurant||''}</span>
-      </div>
-      <button onclick="deleteRec('${rec.id}',this)" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">刪</button>
-    </div>`;
+// OCR upload
+let ocrFiles = {f1:null, f2:null};
+['f1','f2'].forEach(id => {
+  document.getElementById(id).addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    ocrFiles[id] = file;
+    const n = id.slice(1);
+    const dz = document.getElementById('dz'+n);
+    dz.innerHTML = file.name + '<input type="file" id="'+id+'" accept="image/*" style="display:none">';
+    dz.classList.add('has');
+    document.getElementById(id).addEventListener('change', e2 => { if(e2.target.files[0]) ocrFiles[id]=e2.target.files[0]; });
+    const prev = document.getElementById('prev'+n);
+    prev.src = URL.createObjectURL(file); prev.style.display = 'block';
+  });
+});
+
+async function submitOcr() {
+  if (!ocrFiles.f1) { return; }
+  const btn = document.getElementById('ocrBtn');
+  btn.disabled = true; btn.textContent = 'OCR 辨識中…';
+  const result = document.getElementById('ocrResult');
+  result.style.display = 'none';
+  try {
+    const otype = document.querySelector('input[name=otype]:checked').value;
+    const fd = new FormData(); fd.append('image', ocrFiles.f1); fd.append('otype', otype); fd.append('clamp', '0');
+    const d1 = await (await fetch('/upload', {method:'POST', body:fd})).json();
+    let html = renderOcrResult(d1, '主單');
+    if (ocrFiles.f2) {
+      const fd2 = new FormData(); fd2.append('image', ocrFiles.f2); fd2.append('otype', 'main'); fd2.append('clamp', '1');
+      const d2 = await (await fetch('/upload', {method:'POST', body:fd2})).json();
+      html += renderOcrResult(d2, '夾單');
+    }
+    result.innerHTML = html; result.style.display = '';
+    result.className = 'ocr-result' + ((d1.error) ? ' err' : '');
+    loadLog();
+  } catch(e) {
+    result.innerHTML = '錯誤: ' + e; result.style.display = ''; result.className = 'ocr-result err';
   }
-  document.getElementById('todayTitle').textContent = `今日記錄（${data.records.length}筆）`;
-  list.innerHTML = html;
-  document.querySelector('.total-bar') && document.querySelector('.total-bar').remove();
-  document.getElementById('todayCard').insertAdjacentHTML('afterend',
-    `<div class="total-bar"><span>平台 $${data.total_platform}</span><span>補差 $${data.total_supp}</span><span>合計 $${data.total_platform+data.total_supp}</span></div>`);
+  btn.disabled = false; btn.textContent = 'OCR 辨識並記錄';
 }
-async function deleteRec(id, btn) {
-  if (btn.dataset.confirm !== '1') {
-    btn.textContent = '確定?';
-    btn.style.background = '#e74c3c';
-    btn.style.color = '#fff';
-    btn.dataset.confirm = '1';
-    setTimeout(() => { if (btn.dataset.confirm === '1') { btn.textContent = '刪'; btn.style.background='none'; btn.style.color='#e74c3c'; btn.dataset.confirm=''; } }, 3000);
+
+function renderOcrResult(d, label) {
+  if (d.error) return `<b>${label} 失敗</b>: ${d.error}<br>`;
+  const typeStr = {accept:'接單',arrived:'抵達',complete:'完成'}[d.screen_type]||d.screen_type;
+  return `<b>${label} ${typeStr}</b> ${d.restaurant||''}<br>平台 $${d.platform||'?'}　底價 $${d.platform_base||'?'}　${d.supplement!=null?'補差 $'+d.supplement:''}<br>`;
+}
+
+// Log list
+async function loadLog() {
+  const url = viewDate ? '/today?date='+viewDate : '/today';
+  const data = await (await fetch(url)).json();
+  const el = document.getElementById('logEntries');
+  const titleEl = document.getElementById('logTitle');
+  if (!data.records.length) {
+    el.innerHTML = '<div class="empty">尚無記錄</div>';
+    document.getElementById('dailyTotalCard').style.display = 'none';
+    document.getElementById('cycleCard').style.display = 'none';
+    titleEl.textContent = '今日記錄';
     return;
   }
-  const date = document.getElementById('datePicker').value || '';
-  const r = await fetch('/delete/'+id+(date?'?date='+date:''), {method:'DELETE'});
-  const d = await r.json();
-  if (d.ok) { document.getElementById('rec-'+id).remove(); loadToday(); }
+  titleEl.textContent = (viewDate && viewDate !== todayStr() ? viewDate.slice(5) : '今日') + '記錄 ('+data.records.length+'筆)';
+  el.innerHTML = data.records.map(rec => {
+    const tl = {main:'主單',clamp:'夾單',stack:'疊單',stack_clamp:'疊夾'}[rec.type]||rec.type;
+    const suppStr = rec.supplement!=null ? '$'+rec.supplement : '進行中';
+    return `<div class="log-entry" id="rec-${rec.id}">
+      <div>
+        <div class="le-meta">${rec.accept_time}→${rec.complete_time||'?'} <span style="color:var(--accent)">${tl}</span>${rec.restaurant?' · '+rec.restaurant:''}</div>
+        <div class="le-detail">平台 $${rec.platform}${rec.bonus?'(+'+rec.bonus+')':''}　${rec.total_min!=null?rec.total_min+'分　':''}<span style="color:var(--positive)">${suppStr}</span></div>
+      </div>
+      <div style="text-align:right">
+        <div class="le-supp">${rec.supplement!=null?'$'+rec.supplement:''}</div>
+        <button class="le-del" onclick="deleteRec('${rec.id}',this)">刪</button>
+      </div>
+    </div>`;
+  }).join('');
+  // Daily total
+  const tipCard = data.records.reduce((s,r)=>s+(r.tip||0),0);
+  const tipCash = data.records.reduce((s,r)=>s+(r.tip_cash||0),0);
+  const grand = data.total_platform + data.total_supp + tipCard;
+  document.getElementById('dailyTotalCard').style.display = '';
+  document.getElementById('dailyTotalBody').innerHTML = `
+    <div class="dt-row"><span class="dt-lbl">平台底薪</span><span class="dt-amt">$${data.total_platform}</span></div>
+    <div class="dt-row"><span class="dt-lbl">補差合計</span><span class="dt-amt">$${data.total_supp}</span></div>
+    ${tipCard>0?`<div class="dt-row"><span class="dt-lbl">小費(app)</span><span class="dt-amt accent">$${tipCard}</span></div>`:''}
+    ${tipCash>0?`<div class="dt-row"><span class="dt-lbl">小費(現金,不計入)</span><span class="dt-amt" style="color:var(--muted)">$${tipCash}</span></div>`:''}
+    <div class="dt-row grand"><span class="dt-lbl bold">今日總合</span><span class="dt-amt big">$${grand}</span></div>`;
+  renderDateTabs();
 }
-// Set date picker to today
-document.getElementById('datePicker').value = new Date().toISOString().slice(0,10);
-loadToday();
+
+async function deleteRec(id, btn) {
+  if (btn.dataset.c !== '1') {
+    btn.textContent = '確定?'; btn.style.background = 'var(--red)'; btn.style.color = '#fff'; btn.dataset.c = '1';
+    setTimeout(()=>{ if(btn.dataset.c==='1'){btn.textContent='刪';btn.style.background='';btn.style.color='var(--red)';btn.dataset.c='';} }, 3000);
+    return;
+  }
+  const r = await fetch('/delete/'+id+(viewDate?'?date='+viewDate:''), {method:'DELETE'});
+  const d = await r.json();
+  if (d.ok) { document.getElementById('rec-'+id)?.remove(); loadLog(); }
+}
+
+// Init
+viewDate = todayStr();
+renderDateTabs();
+loadLog();
 </script>
 </body>
 </html>"""
@@ -583,6 +701,11 @@ def delete_record(record_id):
         return jsonify({'error': '找不到記錄'}), 404
     save_records(new_records, d)
     return jsonify({'ok': True})
+
+@app.route('/dates')
+def list_dates():
+    dates = sorted([f.stem for f in RECORDS_DIR.glob('*.json')])
+    return jsonify(dates)
 
 @app.route('/today')
 def today():
