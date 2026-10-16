@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ue-web
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: GOOGLE_VISION_API_KEY
+        sync: false
