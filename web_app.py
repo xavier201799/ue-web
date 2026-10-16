@@ -83,19 +83,25 @@ def ocr_image(path):
                                 'isOverlayRequired': 'false',
                                 'apikey': ocr_key},
                           timeout=30)
-        result = r.json()
+        print(f'[OCR] http_status={r.status_code}', flush=True)
+        try:
+            result = r.json()
+        except Exception as je:
+            print(f'[OCR] json_parse_err: {je} body[:200]={r.text[:200]}', flush=True)
+            raise
         exit_code = result.get('OCRExitCode')
         errored = result.get('IsErroredOnProcessing')
-        print(f'[OCR] space exitCode={exit_code} errored={errored}', flush=True)
+        keys = list(result.keys())
+        print(f'[OCR] space exitCode={exit_code} errored={errored} keys={keys}', flush=True)
         if result.get('ParsedResults'):
             text = result['ParsedResults'][0].get('ParsedText', '')
             print(f'[OCR] text len={len(text)} hasZh={any(chr(0x4e00)<=c<=chr(0x9fff) for c in text)}', flush=True)
             if text.strip():
                 return text
         else:
-            print(f'[OCR] no ParsedResults: {result.get("ErrorMessage")}', flush=True)
+            print(f'[OCR] no ParsedResults err={result.get("ErrorMessage")} raw={str(result)[:200]}', flush=True)
     except Exception as e:
-        print(f'[OCR] exception: {e}', flush=True)
+        print(f'[OCR] exception: {type(e).__name__}: {e}', flush=True)
     # Fallback: Tesseract eng-only (lightweight, no chi_tra to avoid OOM on 512MB)
     try:
         import pytesseract
