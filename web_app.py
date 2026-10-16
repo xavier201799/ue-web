@@ -235,16 +235,24 @@ body { font-family: -apple-system, sans-serif; background: #f5f5f5; color: #111;
 <div class="card">
   <div class="section-title">手動新增記錄</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">接單時間</div><input id="m_accept" type="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">完成時間（選填）</div><input id="m_complete" type="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">平台金額</div><input id="m_platform" type="number" placeholder="$" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
-    <div><div style="font-size:12px;color:#888;margin-bottom:4px">加碼</div><input id="m_bonus" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">接單時間</div><input id="m_accept" type="time" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">完成時間</div><input id="m_complete" type="time" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">平台金額</div><input id="m_platform" type="number" placeholder="$" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">加碼</div><input id="m_bonus" type="number" placeholder="0" value="0" oninput="calcManualPreview()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">小費（app/刷卡）</div><input id="m_tip_card" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
+    <div><div style="font-size:12px;color:#888;margin-bottom:4px">小費（現金）</div><input id="m_tip_cash" type="number" placeholder="0" value="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px"></div>
   </div>
   <input id="m_restaurant" type="text" placeholder="餐廳名稱（選填）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:8px">
   <div class="seg" style="margin-top:0">
     <label><input type="radio" name="mtype" value="main" checked><span>主單</span></label>
     <label><input type="radio" name="mtype" value="stack"><span>疊單</span></label>
     <label><input type="radio" name="mtype" value="clamp"><span>夾單</span></label>
+  </div>
+  <!-- 即時補差預覽 -->
+  <div id="manualPreview" style="display:none;margin-top:10px;background:#e8f9ef;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.8">
+    <div style="display:flex;justify-content:space-between"><span style="color:#888">時間</span><span id="mp_min" style="font-weight:600"></span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:#888">底價</span><span id="mp_base" style="font-weight:600"></span></div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #c8eedd;margin-top:4px;padding-top:4px"><span style="color:#06C167;font-weight:700">補差</span><span id="mp_supp" style="font-weight:700;color:#06C167;font-size:15px"></span></div>
   </div>
   <button class="btn" style="margin-top:8px" onclick="submitManual()">新增</button>
   <div id="manualResult" style="margin-top:8px;font-size:13px;color:#06C167"></div>
@@ -324,6 +332,25 @@ function renderResult(data, label) {
   </div>`;
 }
 
+function calcManualPreview() {
+  const accept = document.getElementById('m_accept').value;
+  const complete = document.getElementById('m_complete').value;
+  const platform = parseFloat(document.getElementById('m_platform').value) || 0;
+  const bonus = parseFloat(document.getElementById('m_bonus').value) || 0;
+  const preview = document.getElementById('manualPreview');
+  if (!accept || !complete || !platform) { preview.style.display='none'; return; }
+  const [ah,am] = accept.split(':').map(Number);
+  const [ch,cm] = complete.split(':').map(Number);
+  let totalMin = (ch*60+cm) - (ah*60+am);
+  if (totalMin < 0) totalMin += 1440;
+  const base = platform - bonus;
+  const supp = Math.max(0, Math.floor(totalMin * 245/60) - base);
+  document.getElementById('mp_min').textContent = totalMin + '分 → $' + (totalMin*245/60).toFixed(1);
+  document.getElementById('mp_base').textContent = '$' + base + (bonus>0 ? '（'+platform+'-'+bonus+'）' : '');
+  document.getElementById('mp_supp').textContent = '$' + supp;
+  preview.style.display = '';
+}
+
 async function submitManual() {
   const accept = document.getElementById('m_accept').value;
   const platform = parseInt(document.getElementById('m_platform').value || '0');
@@ -333,6 +360,8 @@ async function submitManual() {
     complete_time: document.getElementById('m_complete').value || '',
     platform,
     bonus: parseInt(document.getElementById('m_bonus').value || '0'),
+    tip_card: parseInt(document.getElementById('m_tip_card').value || '0'),
+    tip_cash: parseInt(document.getElementById('m_tip_cash').value || '0'),
     restaurant: document.getElementById('m_restaurant').value,
     type: document.querySelector('input[name=mtype]:checked').value,
     date: document.getElementById('datePicker').value || ''
@@ -492,6 +521,8 @@ def manual_entry():
     complete_time = data.get('complete_time', '')
     platform = int(data.get('platform', 0))
     bonus = int(data.get('bonus', 0))
+    tip_card = int(data.get('tip_card', 0))
+    tip_cash = int(data.get('tip_cash', 0))
     restaurant = data.get('restaurant', '')
     order_type = data.get('type', 'main')
     platform_base = platform - bonus
@@ -526,7 +557,8 @@ def manual_entry():
         'est_min': 0,
         'total_min': total_min,
         'supplement': supplement,
-        'tip': 0,
+        'tip': tip_card,
+        'tip_cash': tip_cash,
     }
     records.append(rec)
     save_records(records, target_date)
