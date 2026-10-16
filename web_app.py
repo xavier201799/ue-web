@@ -50,6 +50,16 @@ RATE = 245 / 60
 
 app = Flask(__name__)
 
+# Pre-load Tesseract chi_tra at startup so gunicorn --preload COW works
+try:
+    import pytesseract
+    from PIL import Image as _Image
+    import io as _io
+    _dummy = _Image.new('L', (10, 10), 255)
+    pytesseract.image_to_string(_dummy, lang='chi_tra+eng', config='--psm 6')
+except Exception:
+    pass
+
 _skip_words = {'外送','獨享','接受','接單','取消','疊單','加碼','優先','預約','快遞','購物'}
 _skip_pat = re.compile(r'(台灣|桃園|新北|台北|台中|高雄|基隆).*(路|街|巷|號)|分鐘|公里|\$|\d{3,}')
 
