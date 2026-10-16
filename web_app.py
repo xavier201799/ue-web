@@ -53,16 +53,30 @@ app = Flask(__name__)
 _skip_words = {'外送','獨享','接受','接單','取消','疊單','加碼','優先','預約','快遞','購物'}
 _skip_pat = re.compile(r'(台灣|桃園|新北|台北|台中|高雄|基隆).*(路|街|巷|號)|分鐘|公里|\$|\d{3,}')
 
+def _resize_for_ocr(path):
+    """Resize image to max 1600px on longest side, return JPEG bytes (< 1MB for OCR.space)."""
+    from PIL import Image as PILImage
+    import io
+    img = PILImage.open(path)
+    w, h = img.size
+    max_dim = 1600
+    if max(w, h) > max_dim:
+        scale = max_dim / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), PILImage.LANCZOS)
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    buf = io.BytesIO()
+    img.save(buf, format='JPEG', quality=85)
+    return buf.getvalue()
+
 def ocr_image(path):
     # Primary: OCR.space (Traditional Chinese, 25K/month free with own key)
     ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
     try:
-        ext = Path(path).suffix.lower()
-        mime = 'image/png' if ext == '.png' else 'image/jpeg'
-        with open(path, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode()
+        img_bytes = _resize_for_ocr(path)
+        b64 = base64.b64encode(img_bytes).decode()
         r = http_req.post('https://api.ocr.space/parse/image',
-                          data={'base64Image': f'data:{mime};base64,{b64}',
+                          data={'base64Image': f'data:image/jpeg;base64,{b64}',
                                 'language': 'cht',
                                 'isOverlayRequired': 'false',
                                 'apikey': ocr_key},
