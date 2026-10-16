@@ -12,7 +12,7 @@ from flask import Flask, request, jsonify, render_template_string
 load_dotenv(Path(__file__).parent / '.env')
 GV_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
 DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN', '')
-DISCORD_CHAT_ID = os.environ.get('DISCORD_CHAT_ID', '1493082073336905768')
+DISCORD_CHAT_ID = os.environ.get('DISCORD_CHAT_ID', '1495033355790581794')
 
 def notify_discord(text, image_path=None):
     if not DISCORD_TOKEN:
