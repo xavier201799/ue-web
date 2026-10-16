@@ -4,6 +4,7 @@ UE 跑單記錄 Web UI — Google Vision API 版
 """
 import re, os, json, math, uuid, base64
 import requests as http_req
+from openai import OpenAI
 from datetime import datetime, date
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ from flask import Flask, request, jsonify, render_template_string
 load_dotenv(Path(__file__).parent / '.env')
 load_dotenv(Path('/etc/secrets/.env'), override=False)
 GV_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
+DS_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DS_MODEL = os.environ.get('DEEPSEEK_VISION_MODEL', 'deepseek-vl2')
 DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN', '')
 DISCORD_CHAT_ID = os.environ.get('DISCORD_CHAT_ID', '1495033355790581794')
 
@@ -54,14 +57,28 @@ _skip_pat = re.compile(r'(台灣|桃園|新北|台北|台中|高雄|基隆).*(�
 def ocr_image(path):
     with open(path, 'rb') as f:
         b64 = base64.b64encode(f.read()).decode()
-    payload = {"requests": [{"image": {"content": b64}, "features": [{"type": "TEXT_DETECTION"}]}]}
-    r = http_req.post(f"https://vision.googleapis.com/v1/images:annotate?key={GV_KEY}",
-                      json=payload, timeout=15)
-    data = r.json()
-    if 'responses' not in data:
-        raise Exception(f"Vision API error: {data.get('error', data)}")
-    annotations = data['responses'][0].get('textAnnotations', [])
-    return annotations[0]['description'] if annotations else ''
+    # Try Google Vision first if key available
+    if GV_KEY:
+        payload = {"requests": [{"image": {"content": b64}, "features": [{"type": "TEXT_DETECTION"}]}]}
+        r = http_req.post(f"https://vision.googleapis.com/v1/images:annotate?key={GV_KEY}",
+                          json=payload, timeout=15)
+        data = r.json()
+        if 'responses' in data:
+            annotations = data['responses'][0].get('textAnnotations', [])
+            return annotations[0]['description'] if annotations else ''
+    # Fallback to DeepSeek Vision
+    if DS_KEY:
+        client = OpenAI(api_key=DS_KEY, base_url="https://api.deepseek.com/v1")
+        resp = client.chat.completions.create(
+            model=DS_MODEL,
+            messages=[{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                {"type": "text", "text": "請把這張截圖中所有文字原樣輸出，每行一行，不要解釋。"}
+            ]}],
+            max_tokens=600
+        )
+        return resp.choices[0].message.content
+    raise Exception("No OCR API key available")
 
 def detect_screen_type(text):
     if '接受' in text and '$' in text:
