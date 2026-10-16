@@ -73,6 +73,7 @@ def _resize_for_ocr(path):
 def ocr_image(path):
     # Primary: OCR.space (Traditional Chinese, 25K/month free with own key)
     ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
+    print(f'[OCR] key_prefix={ocr_key[:6]}', flush=True)
     try:
         img_bytes = _resize_for_ocr(path)
         print(f'[OCR] resize ok: {len(img_bytes)//1024}KB', flush=True)
