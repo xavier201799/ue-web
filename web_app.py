@@ -4,7 +4,6 @@ UE 跑單記錄 Web UI — Google Vision API 版
 """
 import re, os, json, math, uuid, base64
 import requests as http_req
-from openai import OpenAI
 from datetime import datetime, date
 from pathlib import Path
 from dotenv import load_dotenv
@@ -55,18 +54,31 @@ _skip_words = {'外送','獨享','接受','接單','取消','疊單','加碼','�
 _skip_pat = re.compile(r'(台灣|桃園|新北|台北|台中|高雄|基隆).*(路|街|巷|號)|分鐘|公里|\$|\d{3,}')
 
 def ocr_image(path):
-    with open(path, 'rb') as f:
-        b64 = base64.b64encode(f.read()).decode()
-    # Try Google Vision first if key available
+    # Primary: Tesseract (offline, unlimited, no API key)
+    try:
+        import pytesseract
+        from PIL import Image
+        img = Image.open(path)
+        text = pytesseract.image_to_string(img, lang='chi_tra+eng', config='--psm 6')
+        if text.strip():
+            return text
+    except Exception:
+        pass
+    # Fallback: Google Vision
     if GV_KEY:
+        with open(path, 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode()
         payload = {"requests": [{"image": {"content": b64}, "features": [{"type": "TEXT_DETECTION"}]}]}
         r = http_req.post(f"https://vision.googleapis.com/v1/images:annotate?key={GV_KEY}",
                           json=payload, timeout=15)
         data = r.json()
         if 'responses' in data:
             annotations = data['responses'][0].get('textAnnotations', [])
-            return annotations[0]['description'] if annotations else ''
-    # Fallback to OCR.space (free, supports Traditional Chinese)
+            if annotations:
+                return annotations[0]['description']
+    # Fallback: OCR.space
+    with open(path, 'rb') as f:
+        b64 = base64.b64encode(f.read()).decode()
     ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
     r = http_req.post('https://api.ocr.space/parse/image',
                       data={'base64Image': f'data:image/jpeg;base64,{b64}',
@@ -77,7 +89,7 @@ def ocr_image(path):
     result = r.json()
     if result.get('ParsedResults'):
         return result['ParsedResults'][0].get('ParsedText', '')
-    raise Exception(f"OCR.space error: {result.get('ErrorMessage', 'unknown')}")
+    raise Exception("All OCR methods failed")
 
 def detect_screen_type(text):
     if '接受' in text and '$' in text:
