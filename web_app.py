@@ -62,7 +62,8 @@ def _resize_for_ocr(path):
     max_dim = 1600
     if max(w, h) > max_dim:
         scale = max_dim / max(w, h)
-        img = img.resize((int(w * scale), int(h * scale)), PILImage.LANCZOS)
+        resample = getattr(PILImage, 'Resampling', PILImage).LANCZOS
+        img = img.resize((int(w * scale), int(h * scale)), resample)
     if img.mode in ('RGBA', 'P'):
         img = img.convert('RGB')
     buf = io.BytesIO()
