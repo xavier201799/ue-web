@@ -312,11 +312,14 @@ async function loadToday() {
   for (const rec of data.records) {
     const typeLabel = {main:'主單',clamp:'夾單',stack:'疊單',stack_clamp:'疊夾'}[rec.type]||rec.type;
     const supp = rec.supplement != null ? `補差 $${rec.supplement}` : '進行中';
-    html += `<div class="row-item">
-      ${rec.accept_time}→${rec.complete_time||'?'}
-      <span class="badge ${rec.type}">${typeLabel}</span>
-      　$${rec.platform} ${supp}<br>
-      <span style="color:#888;font-size:12px">${rec.restaurant||''}</span>
+    html += `<div class="row-item" id="rec-${rec.id}" style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1">
+        ${rec.accept_time}→${rec.complete_time||'?'}
+        <span class="badge ${rec.type}">${typeLabel}</span>
+        　$${rec.platform} ${supp}<br>
+        <span style="color:#888;font-size:12px">${rec.restaurant||''}</span>
+      </div>
+      <button onclick="deleteRec('${rec.id}')" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">刪</button>
     </div>`;
   }
   document.getElementById('todayTitle').textContent = `今日記錄（${data.records.length}筆）`;
@@ -324,6 +327,13 @@ async function loadToday() {
   document.querySelector('.total-bar') && document.querySelector('.total-bar').remove();
   document.getElementById('todayCard').insertAdjacentHTML('afterend',
     `<div class="total-bar"><span>平台 $${data.total_platform}</span><span>補差 $${data.total_supp}</span><span>合計 $${data.total_platform+data.total_supp}</span></div>`);
+}
+async function deleteRec(id) {
+  if (!confirm('刪除這筆記錄？')) return;
+  const r = await fetch('/delete/'+id, {method:'DELETE'});
+  const d = await r.json();
+  if (d.ok) { document.getElementById('rec-'+id).remove(); loadToday(); }
+  else alert(d.error);
 }
 loadToday();
 </script>
@@ -425,6 +435,15 @@ def upload():
             return jsonify({'error': f'無法辨識截圖類型 (偵測到: {screen})\n文字: {text[:100]}'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@app.route('/delete/<record_id>', methods=['DELETE'])
+def delete_record(record_id):
+    records = get_records()
+    new_records = [r for r in records if r.get('id') != record_id]
+    if len(new_records) == len(records):
+        return jsonify({'error': '找不到記錄'}), 404
+    save_records(new_records)
+    return jsonify({'ok': True})
 
 @app.route('/today')
 def today():
