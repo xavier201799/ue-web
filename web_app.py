@@ -573,6 +573,11 @@ loadLog();
 </body>
 </html>"""
 
+@app.route('/status')
+def status():
+    ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
+    return jsonify({'ocr_key_prefix': ocr_key[:8], 'ocr_key_len': len(ocr_key)})
+
 @app.route('/')
 def index():
     return render_template_string(HTML)
