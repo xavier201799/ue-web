@@ -103,12 +103,12 @@ def ocr_image(path):
             print(f'[OCR] no ParsedResults err={result.get("ErrorMessage")} raw={str(result)[:200]}', flush=True)
     except Exception as e:
         print(f'[OCR] exception: {type(e).__name__}: {e}', flush=True)
-    # Fallback: Tesseract eng-only (lightweight, no chi_tra to avoid OOM on 512MB)
+    # Fallback: Tesseract with Traditional Chinese
     try:
         import pytesseract
         from PIL import Image
         img = Image.open(path)
-        text = pytesseract.image_to_string(img, lang='eng', config='--psm 6')
+        text = pytesseract.image_to_string(img, lang='chi_tra', config='--psm 6')
         if text.strip():
             return text
     except Exception:
