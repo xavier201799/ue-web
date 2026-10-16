@@ -394,7 +394,7 @@ async function loadToday() {
         　$${rec.platform} ${supp}<br>
         <span style="color:#888;font-size:12px">${rec.restaurant||''}</span>
       </div>
-      <button onclick="deleteRec('${rec.id}')" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">刪</button>
+      <button onclick="deleteRec('${rec.id}',this)" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">刪</button>
     </div>`;
   }
   document.getElementById('todayTitle').textContent = `今日記錄（${data.records.length}筆）`;
@@ -403,13 +403,19 @@ async function loadToday() {
   document.getElementById('todayCard').insertAdjacentHTML('afterend',
     `<div class="total-bar"><span>平台 $${data.total_platform}</span><span>補差 $${data.total_supp}</span><span>合計 $${data.total_platform+data.total_supp}</span></div>`);
 }
-async function deleteRec(id) {
-  if (!confirm('刪除這筆記錄？')) return;
+async function deleteRec(id, btn) {
+  if (btn.dataset.confirm !== '1') {
+    btn.textContent = '確定?';
+    btn.style.background = '#e74c3c';
+    btn.style.color = '#fff';
+    btn.dataset.confirm = '1';
+    setTimeout(() => { if (btn.dataset.confirm === '1') { btn.textContent = '刪'; btn.style.background='none'; btn.style.color='#e74c3c'; btn.dataset.confirm=''; } }, 3000);
+    return;
+  }
   const date = document.getElementById('datePicker').value || '';
   const r = await fetch('/delete/'+id+(date?'?date='+date:''), {method:'DELETE'});
   const d = await r.json();
   if (d.ok) { document.getElementById('rec-'+id).remove(); loadToday(); }
-  else alert(d.error);
 }
 // Set date picker to today
 document.getElementById('datePicker').value = new Date().toISOString().slice(0,10);
