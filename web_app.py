@@ -11,6 +11,21 @@ from flask import Flask, request, jsonify, render_template_string
 
 load_dotenv(Path(__file__).parent / '.env')
 GV_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
+DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN', '')
+DISCORD_CHAT_ID = os.environ.get('DISCORD_CHAT_ID', '1493082073336905768')
+
+def notify_discord(text):
+    if not DISCORD_TOKEN:
+        return
+    try:
+        http_req.post(
+            f'https://discord.com/api/v10/channels/{DISCORD_CHAT_ID}/messages',
+            headers={'Authorization': f'Bot {DISCORD_TOKEN}', 'Content-Type': 'application/json'},
+            json={'content': text},
+            timeout=8
+        )
+    except Exception:
+        pass
 
 RECORDS_DIR = Path(__file__).parent / "ue_records"
 UPLOAD_DIR = Path(__file__).parent / "ue_inbox"
@@ -316,6 +331,8 @@ def upload():
             }
             records.append(rec)
             save_records(records)
+            type_label = {'main':'主單','clamp':'夾單','stack':'疊單','stack_clamp':'疊夾'}.get(order_type, order_type)
+            notify_discord(f"📋 接單 [{type_label}] {rec['accept_time']}\n🍽 {rec['restaurant'] or '—'}　$**{platform}**（底 ${platform_base}）")
             return jsonify({**parsed, 'screen_type': 'accept', 'platform_base': platform_base, 'type': order_type})
 
         elif screen == 'arrived':
@@ -346,6 +363,7 @@ def upload():
                 target['total_min'] = total_min
                 target['supplement'] = max(0, math.floor(total_min * RATE) - target['platform_base'])
                 save_records(records)
+                notify_discord(f"✅ 完成 {target['accept_time']}→{target['complete_time']}\n🍽 {target.get('restaurant','—')}　${target['platform']}　{total_min}分　補差 $**{target['supplement']}**")
                 return jsonify({
                     'screen_type': 'complete',
                     'restaurant': target.get('restaurant', ''),
