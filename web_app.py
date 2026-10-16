@@ -75,6 +75,7 @@ def ocr_image(path):
     ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
     try:
         img_bytes = _resize_for_ocr(path)
+        print(f'[OCR] resize ok: {len(img_bytes)//1024}KB', flush=True)
         b64 = base64.b64encode(img_bytes).decode()
         r = http_req.post('https://api.ocr.space/parse/image',
                           data={'base64Image': f'data:image/jpeg;base64,{b64}',
@@ -83,12 +84,18 @@ def ocr_image(path):
                                 'apikey': ocr_key},
                           timeout=30)
         result = r.json()
+        exit_code = result.get('OCRExitCode')
+        errored = result.get('IsErroredOnProcessing')
+        print(f'[OCR] space exitCode={exit_code} errored={errored}', flush=True)
         if result.get('ParsedResults'):
             text = result['ParsedResults'][0].get('ParsedText', '')
+            print(f'[OCR] text len={len(text)} hasZh={any(chr(0x4e00)<=c<=chr(0x9fff) for c in text)}', flush=True)
             if text.strip():
                 return text
-    except Exception:
-        pass
+        else:
+            print(f'[OCR] no ParsedResults: {result.get("ErrorMessage")}', flush=True)
+    except Exception as e:
+        print(f'[OCR] exception: {e}', flush=True)
     # Fallback: Tesseract eng-only (lightweight, no chi_tra to avoid OOM on 512MB)
     try:
         import pytesseract
