@@ -57,7 +57,10 @@ def ocr_image(path):
     payload = {"requests": [{"image": {"content": b64}, "features": [{"type": "TEXT_DETECTION"}]}]}
     r = http_req.post(f"https://vision.googleapis.com/v1/images:annotate?key={GV_KEY}",
                       json=payload, timeout=15)
-    annotations = r.json()['responses'][0].get('textAnnotations', [])
+    data = r.json()
+    if 'responses' not in data:
+        raise Exception(f"Vision API error: {data.get('error', data)}")
+    annotations = data['responses'][0].get('textAnnotations', [])
     return annotations[0]['description'] if annotations else ''
 
 def detect_screen_type(text):
