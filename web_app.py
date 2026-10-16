@@ -57,10 +57,12 @@ def ocr_image(path):
     # Primary: OCR.space (Traditional Chinese, 25K/month free with own key)
     ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
     try:
+        ext = Path(path).suffix.lower()
+        mime = 'image/png' if ext == '.png' else 'image/jpeg'
         with open(path, 'rb') as f:
             b64 = base64.b64encode(f.read()).decode()
         r = http_req.post('https://api.ocr.space/parse/image',
-                          data={'base64Image': f'data:image/jpeg;base64,{b64}',
+                          data={'base64Image': f'data:{mime};base64,{b64}',
                                 'language': 'cht',
                                 'isOverlayRequired': 'false',
                                 'apikey': ocr_key},
