@@ -66,19 +66,18 @@ def ocr_image(path):
         if 'responses' in data:
             annotations = data['responses'][0].get('textAnnotations', [])
             return annotations[0]['description'] if annotations else ''
-    # Fallback to DeepSeek Vision
-    if DS_KEY:
-        client = OpenAI(api_key=DS_KEY, base_url="https://api.deepseek.com/v1")
-        resp = client.chat.completions.create(
-            model=DS_MODEL,
-            messages=[{"role": "user", "content": [
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                {"type": "text", "text": "請把這張截圖中所有文字原樣輸出，每行一行，不要解釋。"}
-            ]}],
-            max_tokens=600
-        )
-        return resp.choices[0].message.content
-    raise Exception("No OCR API key available")
+    # Fallback to OCR.space (free, supports Traditional Chinese)
+    ocr_key = os.environ.get('OCRSPACE_API_KEY', 'helloworld')
+    r = http_req.post('https://api.ocr.space/parse/image',
+                      data={'base64Image': f'data:image/jpeg;base64,{b64}',
+                            'language': 'cht',
+                            'isOverlayRequired': 'false',
+                            'apikey': ocr_key},
+                      timeout=30)
+    result = r.json()
+    if result.get('ParsedResults'):
+        return result['ParsedResults'][0].get('ParsedText', '')
+    raise Exception(f"OCR.space error: {result.get('ErrorMessage', 'unknown')}")
 
 def detect_screen_type(text):
     if '接受' in text and '$' in text:
